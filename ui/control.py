@@ -11,8 +11,8 @@ from concurrent.futures import Future
 from tkinter import ttk
 from typing import Callable
 
-from vtg.protocol import (COLORS, DEFAULT_IRE_STEP, IRE_STEP_CHOICES, PATTERNS, RESOLUTIONS,
-                          ire_steps)
+from vtg.protocol import (COLORS, DEFAULT_IRE_STEP, IRE_STEP_CHOICES, MAIN_PATTERNS, MORE_PATTERNS,
+                          RESOLUTIONS, ire_steps, pattern_uses_ire)
 
 from . import settings, theme
 
@@ -110,8 +110,16 @@ class ControlPage(ttk.Frame):
         ttk.Button(row, text="Set", command=self._set_exact_ire).pack(side="left")
 
         f = section("PATTERN")
-        self.pat_group = ButtonGroup(f, list(PATTERNS), self.set_pattern, 3)
+        self.pat_group = ButtonGroup(f, MAIN_PATTERNS, self.set_pattern, 3)
         self.pat_group.pack(fill="x")
+        row = ttk.Frame(f, style="Panel.TFrame")
+        row.pack(fill="x", pady=(6, 0))
+        ttk.Label(row, text="More", style="PanelDim.TLabel").pack(side="left")
+        self.more_var = tk.StringVar()
+        self.more_box = ttk.Combobox(row, textvariable=self.more_var, values=MORE_PATTERNS,
+                                     state="readonly")
+        self.more_box.pack(side="left", fill="x", expand=True, padx=(6, 0))
+        self.more_box.bind("<<ComboboxSelected>>", lambda e: self.set_pattern(self.more_var.get()))
 
         f = section("COLOR")
         styles = {n: (f"Sw{n}.TButton", f"Sw{n}On.TButton") for n in COLORS}
@@ -186,7 +194,7 @@ class ControlPage(ttk.Frame):
         v = self.state_vals
         self.res_lbl.configure(text=v["resolution"] or "—")
         parts = [
-            f"PAT {v['pattern'] or '—'}",
+            f"PAT {(v['pattern'] or '—')[:16]}",
             f"COL {v['color'] or '—'}",
             f"IRE {'—' if v['ire'] is None else v['ire']}",
             f"PWR {v['power'] or '—'}",
@@ -194,6 +202,10 @@ class ControlPage(ttk.Frame):
         self.detail_lbl.configure(text="  ".join(parts))
         self.res_group.select(v["resolution"])
         self.pat_group.select(v["pattern"])
+        self.more_var.set(v["pattern"] if v["pattern"] in MORE_PATTERNS else "")
+        ire_note = "" if v["pattern"] is None or pattern_uses_ire(v["pattern"]) else \
+            "  (not used by this pattern)"
+        self.ire_frame.configure(text="IRE" + ire_note)
         self.color_group.select(v["color"])
         self.power_group.select(v["power"])
         ire = v["ire"]

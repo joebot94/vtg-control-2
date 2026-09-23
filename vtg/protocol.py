@@ -39,8 +39,11 @@ RESOLUTIONS = {
     "1080i":  "010*06=",
 }
 
-# name -> pattern number for "{n}J" (dict order = button order, as in the original app)
+# name -> pattern number for "{n}J".
+# Numbers are the VTG's PatternIDs, as listed in the official software's hi.vtg
+# (see docs/VTG_RATE_RECORD.md). The 9 the original app used all match that list.
 PATTERNS = {
+    # the original app's nine, in its button order (short names)
     "Window20":   15,
     "Window80":   14,
     "VarIRE":     16,
@@ -50,7 +53,37 @@ PATTERNS = {
     "ColorBar":   13,
     "FullScreen": 17,
     "PLUGE":       9,
+    # the rest, with Extron's names (not yet exercised on hardware)
+    "Circles":                  1,
+    "Safe Area":                2,
+    "Focus":                    3,
+    "4:3 Crop":                 4,
+    "Rect/Square Crosshairs":   5,
+    "32-Level Split Grayscale": 10,
+    "Extreme Grayscale":        11,
+    "Ramp":                     12,
+    "F.Field+Target":           18,
+    "Checkerboard":             19,
+    "Bounce (Automatic)":       20,
+    "Bounce (Manual Toggle)":   21,
+    "Alt. Pixels (1 On 1 Off)": 22,
+    "Graphics Multiburst":      23,
+    "Alt. Pixels 2D (1x1)":     24,
+    "Transient Response":       25,
+    "Cont. Transfer Function":  26,
+    "H Pattern W On B":         27,
+    "Hum Bar":                  28,
 }
+MAIN_PATTERNS = list(PATTERNS)[:9]   # buttons on CONTROL
+MORE_PATTERNS = list(PATTERNS)[9:]   # the "More" dropdown
+
+# From hi.vtg: the patterns whose look depends on IRE level, and those that can be inverted.
+IRE_PATTERN_IDS = {16, 17, 18, 19, 26, 28}
+INVERT_PATTERN_IDS = {1, 2, 4, 5, 6, 7, 8, 12, 19, 21, 26, 27}  # invert command not known yet
+
+
+def pattern_uses_ire(name: str | None) -> bool:
+    return name is not None and PATTERNS.get(name) in IRE_PATTERN_IDS
 
 # name -> color code for "{code}*10#" (dict order = button order)
 COLORS = {

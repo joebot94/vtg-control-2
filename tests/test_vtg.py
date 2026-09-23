@@ -94,6 +94,14 @@ class Parsers(unittest.TestCase):
         self.assertIsNone(protocol.parse_resolution("099*99"))
         self.assertAlmostEqual(protocol.parse_temperature_f("Tmp +095.5F"), 95.5)
         self.assertEqual(protocol.parse_pattern("9"), "PLUGE")
+        self.assertEqual(protocol.parse_pattern("27"), "H Pattern W On B")
+
+    def test_pattern_table(self):
+        ids = list(protocol.PATTERNS.values())
+        self.assertEqual(sorted(ids), list(range(1, 29)))  # all 28, no duplicates
+        self.assertEqual(len(protocol.MAIN_PATTERNS) + len(protocol.MORE_PATTERNS), 28)
+        self.assertTrue(protocol.pattern_uses_ire("FullScreen"))   # Flat Field, 17
+        self.assertFalse(protocol.pattern_uses_ire("PLUGE"))
 
     def test_program_timing_is_stubbed(self):
         log = CaptureLog()
