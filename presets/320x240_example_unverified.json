@@ -1,0 +1,23 @@
+{
+  "name": "320x240 example (unverified)",
+  "width": 320,
+  "height": 240,
+  "clock_source": "refresh",
+  "refresh": 59.94,
+  "h_front_porch": 16,
+  "h_sync_width": 32,
+  "h_back_porch": 48,
+  "v_front_porch": 3,
+  "v_sync_width": 3,
+  "v_back_porch": 16,
+  "h_sync_polarity": "-",
+  "v_sync_polarity": "-",
+  "interlaced": false,
+  "derived": {
+    "h_total": 416,
+    "v_total": 262,
+    "pixel_clock_hz": 6532980.48,
+    "h_freq_hz": 15704.28,
+    "refresh_hz": 59.94
+  }
+}

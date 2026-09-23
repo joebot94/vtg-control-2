@@ -1,0 +1,23 @@
+{
+  "name": "640x480 VGA 60 (DMT)",
+  "width": 640,
+  "height": 480,
+  "clock_source": "pixel_clock",
+  "pixel_clock": 25175000,
+  "h_front_porch": 16,
+  "h_sync_width": 96,
+  "h_back_porch": 48,
+  "v_front_porch": 10,
+  "v_sync_width": 2,
+  "v_back_porch": 33,
+  "h_sync_polarity": "-",
+  "v_sync_polarity": "-",
+  "interlaced": false,
+  "derived": {
+    "h_total": 800,
+    "v_total": 525,
+    "pixel_clock_hz": 25175000,
+    "h_freq_hz": 31468.75,
+    "refresh_hz": 59.940476
+  }
+}

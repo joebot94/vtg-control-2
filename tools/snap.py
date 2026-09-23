@@ -27,11 +27,12 @@ if steps:
 
 def shoot():
     root.update_idletasks()
+    root.update()
     x, y = root.winfo_rootx(), root.winfo_rooty()
     w, h = root.winfo_width(), root.winfo_height()
     subprocess.run(["screencapture", "-x", "-o", f"-R{x},{y},{w},{h}", out], check=True)
     app.quit()
 
 
-root.after(2500, shoot)
+root.after(3000, shoot)
 root.mainloop()
