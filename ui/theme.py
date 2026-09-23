@@ -105,7 +105,7 @@ def apply(root: tk.Tk) -> None:
           indicatorforeground=[("selected", ACCENT)])
 
     s.configure("TNotebook", background=BG, borderwidth=0, tabmargins=(0, 4, 0, 0))
-    s.configure("TNotebook.Tab", background=PANEL, foreground=FG_DIM, padding=(18, 6),
+    s.configure("TNotebook.Tab", background=PANEL, foreground=FG_DIM, padding=(11, 5),
                 font=f["ui_bold"], bordercolor=LINE)
     s.map("TNotebook.Tab",
           background=[("selected", PANEL_HI)],
@@ -115,8 +115,9 @@ def apply(root: tk.Tk) -> None:
                 bordercolor=LINE, rowheight=22)
     s.map("Treeview", background=[("selected", ACCENT)], foreground=[("selected", "#000000")])
     s.configure("Treeview.Heading", background=PANEL_HI, foreground=FG_DIM, relief="flat")
-    s.configure("Vertical.TScrollbar", background=PANEL_HI, troughcolor=PANEL,
-                bordercolor=LINE, arrowcolor=FG_DIM)
+    for orient in ("Vertical", "Horizontal"):
+        s.configure(f"{orient}.TScrollbar", background=PANEL_HI, troughcolor=PANEL,
+                    bordercolor=LINE, arrowcolor=FG_DIM, lightcolor=PANEL_HI, darkcolor=PANEL_HI)
 
 
 class Dot(tk.Canvas):

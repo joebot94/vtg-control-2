@@ -4,3 +4,4 @@ captures/*.jsonl
 .venv/
 build/
 dist/
+selftest.txt

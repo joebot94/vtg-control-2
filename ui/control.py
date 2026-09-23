@@ -62,55 +62,50 @@ class ControlPage(ttk.Frame):
         self._make_swatch_styles()
 
         # ---- readout ----
-        top = ttk.Frame(self, style="Panel.TFrame", padding=(14, 10))
+        top = ttk.Frame(self, style="Panel.TFrame", padding=(14, 8))
         top.pack(fill="x")
-        self.res_lbl = ttk.Label(top, text="—", style="Big.TLabel")
-        self.res_lbl.pack(side="left")
-        self.detail_lbl = ttk.Label(top, text="", style="PanelDim.TLabel", font=app.fonts["mono"])
-        self.detail_lbl.pack(side="left", padx=(18, 0))
         self.refresh_btn = ttk.Button(top, text="Read VTG", command=self.refresh_all)
-        self.refresh_btn.pack(side="right")
+        self.refresh_btn.pack(side="right", anchor="n")
+        self.res_lbl = ttk.Label(top, text="—", style="Big.TLabel")
+        self.res_lbl.pack(anchor="w")
+        self.detail_lbl = ttk.Label(top, text="", style="PanelDim.TLabel", font=app.fonts["mono"])
+        self.detail_lbl.pack(anchor="w")
 
-        body = ttk.Frame(self)
-        body.pack(fill="both", expand=True, pady=(10, 0))
-        body.columnconfigure(0, weight=1)
-        body.columnconfigure(1, weight=1)
+        def section(title: str, pady=(8, 0)) -> ttk.LabelFrame:
+            f = ttk.LabelFrame(self, text=title, padding=(8, 6))
+            f.pack(fill="x", pady=pady)
+            return f
 
-        # ---- left column ----
-        left = ttk.Frame(body)
-        left.grid(row=0, column=0, sticky="nsew", padx=(0, 5))
+        # OUTPUT and UNIT share a row
+        row = ttk.Frame(self)
+        row.pack(fill="x", pady=(8, 0))
+        f = ttk.LabelFrame(row, text="OUTPUT", padding=(8, 6))
+        f.pack(side="left", fill="both", expand=True, padx=(0, 4))
+        self.power_group = ButtonGroup(f, ["ON", "OFF"], self.set_power, 2, width=6)
+        self.power_group.pack(fill="x")
+        f = ttk.LabelFrame(row, text="UNIT", padding=(8, 6))
+        f.pack(side="left", fill="both", expand=True, padx=(4, 0))
+        self.temp_lbl = ttk.Label(f, text="Temperature  —", style="Mono.TLabel")
+        self.temp_lbl.pack(anchor="w", pady=4)
 
-        f = ttk.LabelFrame(left, text="RESOLUTION", padding=8)
-        f.pack(fill="x")
-        self.res_group = ButtonGroup(f, list(RESOLUTIONS), self.set_resolution, 4)
+        f = section("RESOLUTION")
+        self.res_group = ButtonGroup(f, list(RESOLUTIONS), self.set_resolution, 4, width=8)
         self.res_group.pack(fill="x")
 
-        f = ttk.LabelFrame(left, text="PATTERN", padding=8)
-        f.pack(fill="x", pady=(10, 0))
+        f = section("PATTERN")
         self.pat_group = ButtonGroup(f, list(PATTERNS), self.set_pattern, 3)
         self.pat_group.pack(fill="x")
 
-        f = ttk.LabelFrame(left, text="OUTPUT", padding=8)
-        f.pack(fill="x", pady=(10, 0))
-        self.power_group = ButtonGroup(f, ["ON", "OFF"], self.set_power, 2)
-        self.power_group.pack(fill="x")
-
-        # ---- right column ----
-        right = ttk.Frame(body)
-        right.grid(row=0, column=1, sticky="nsew", padx=(5, 0))
-
-        f = ttk.LabelFrame(right, text="COLOR", padding=8)
-        f.pack(fill="x")
+        f = section("COLOR")
         styles = {n: (f"Sw{n}.TButton", f"Sw{n}On.TButton") for n in COLORS}
         self.color_group = ButtonGroup(f, list(COLORS), self.set_color, 4, styles=styles, width=8)
         self.color_group.pack(fill="x")
 
-        f = ttk.LabelFrame(right, text="IRE", padding=8)
-        f.pack(fill="x", pady=(10, 0))
+        f = section("IRE")
         self.ire_group = ButtonGroup(f, IRE_STEPS, self.set_ire, 6, width=4)
         self.ire_group.pack(fill="x")
         row = ttk.Frame(f, style="Panel.TFrame")
-        row.pack(fill="x", pady=(8, 0))
+        row.pack(fill="x", pady=(6, 0))
         ttk.Label(row, text="Exact", style="PanelDim.TLabel").pack(side="left")
         self.ire_var = tk.StringVar(value="50")
         self.ire_spin = ttk.Spinbox(row, from_=0, to=100, textvariable=self.ire_var, width=5)
@@ -118,11 +113,6 @@ class ControlPage(ttk.Frame):
         self.ire_spin.bind("<Return>", lambda e: self._set_exact_ire())
         self.ire_set_btn = ttk.Button(row, text="Set", command=self._set_exact_ire)
         self.ire_set_btn.pack(side="left")
-
-        f = ttk.LabelFrame(right, text="UNIT", padding=8)
-        f.pack(fill="x", pady=(10, 0))
-        self.temp_lbl = ttk.Label(f, text="Temperature  —", style="Mono.TLabel")
-        self.temp_lbl.pack(anchor="w")
 
         self.groups = [self.res_group, self.pat_group, self.power_group,
                        self.color_group, self.ire_group]
@@ -167,7 +157,7 @@ class ControlPage(ttk.Frame):
             f"IRE {'—' if v['ire'] is None else v['ire']}",
             f"OUT {v['power'] or '—'}",
         ]
-        self.detail_lbl.configure(text="   ".join(parts))
+        self.detail_lbl.configure(text="  ".join(parts))
         self.res_group.select(v["resolution"])
         self.pat_group.select(v["pattern"])
         self.color_group.select(v["color"])

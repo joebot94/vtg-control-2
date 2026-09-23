@@ -44,8 +44,8 @@ class App:
         self.polling_enabled = True  # the Lab turns this off for clean captures
 
         root.title(APP_NAME)
-        root.geometry("900x680")
-        root.minsize(760, 560)
+        root.geometry("540x860")
+        root.minsize(500, 760)
         theme.apply(root)
         self.fonts = theme.fonts()
 
@@ -70,19 +70,19 @@ class App:
 
     # ------------------------------------------------------------ layout --
     def _build_header(self) -> None:
-        bar = ttk.Frame(self.root, padding=(10, 8, 10, 4))
+        bar = ttk.Frame(self.root, padding=(10, 8, 10, 2))
         bar.pack(fill="x")
         self.conn_dot = theme.Dot(bar)
         self.conn_dot.pack(side="left", padx=(0, 6))
         self.model_lbl = ttk.Label(bar, text=APP_NAME, style="Title.TLabel")
         self.model_lbl.pack(side="left")
 
-        right = ttk.Frame(bar)
-        right.pack(side="right")
+        right = ttk.Frame(self.root, padding=(10, 2, 10, 4))
+        right.pack(fill="x")
         ttk.Label(right, text="Port", style="Dim.TLabel").pack(side="left", padx=(0, 4))
         self.port_var = tk.StringVar(value=MOCK_PORT)
-        self.port_box = ttk.Combobox(right, textvariable=self.port_var, width=18)
-        self.port_box.pack(side="left")
+        self.port_box = ttk.Combobox(right, textvariable=self.port_var, width=14)
+        self.port_box.pack(side="left", fill="x", expand=True)
         self.port_box.bind("<Button-1>", lambda e: self._refresh_ports())
         ttk.Label(right, text="Baud", style="Dim.TLabel").pack(side="left", padx=(10, 4))
         self.baud_var = tk.StringVar(value="9600")
@@ -91,7 +91,7 @@ class App:
         self.baud_box.pack(side="left")
         self.conn_btn = ttk.Button(right, text="Connect", style="Accent.TButton",
                                    command=self.toggle_connection, width=11)
-        self.conn_btn.pack(side="left", padx=(10, 0))
+        self.conn_btn.pack(side="right", padx=(10, 0))
         self._refresh_ports()
 
     def _build_status(self) -> None:
@@ -226,7 +226,7 @@ class App:
         elif ev.dir == RX:
             self._recent_errors = 0
         text = to_ascii(ev.data) if ev.data else ev.note
-        self.last_lbl.configure(text=f"{ev.clock()} {ev.dir:<4} {text}"[:110])
+        self.last_lbl.configure(text=f"{ev.clock()} {ev.dir:<4} {text}"[:48])
         self._update_health()
         for fn in self._event_listeners:
             fn(ev)

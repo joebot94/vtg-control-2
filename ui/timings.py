@@ -30,14 +30,14 @@ class TimingsPage(ttk.Frame):
         mono = app.fonts["mono"]
 
         panel = ttk.LabelFrame(self, text="CUSTOM TIMING", padding=14)
-        panel.pack(side="left", fill="y", anchor="n")
+        panel.pack(fill="x")
 
         # name
         row = ttk.Frame(panel, style="Panel.TFrame")
         row.grid(row=0, column=0, columnspan=6, sticky="ew", pady=(0, 10))
         ttk.Label(row, text="Name", style="PanelDim.TLabel", width=8).pack(side="left")
         self.vars["name"] = tk.StringVar()
-        ttk.Entry(row, textvariable=self.vars["name"], width=34).pack(side="left", fill="x", expand=True)
+        ttk.Entry(row, textvariable=self.vars["name"], width=28).pack(side="left", fill="x", expand=True)
 
         # clock source + value
         row = ttk.Frame(panel, style="Panel.TFrame")
@@ -91,13 +91,13 @@ class TimingsPage(ttk.Frame):
         self.program_btn = ttk.Button(row, text="PROGRAM VTG", style="Accent.TButton",
                                       command=self.program)
         self.program_btn.pack(side="right")
-        self.program_note = ttk.Label(panel, text="", style="PanelDim.TLabel", wraplength=420,
+        self.program_note = ttk.Label(panel, text="", style="PanelDim.TLabel", wraplength=440,
                                       justify="left")
         self.program_note.grid(row=8, column=0, columnspan=6, sticky="w", pady=(8, 0))
 
         # ---- derived readout ----
         out = ttk.LabelFrame(self, text="DERIVED", padding=14)
-        out.pack(side="left", fill="both", expand=True, anchor="n", padx=(10, 0))
+        out.pack(fill="both", expand=True, pady=(10, 0))
         self.res_lbl = ttk.Label(out, text="—", style="Big.TLabel")
         self.res_lbl.pack(anchor="w")
         self.derived = {}
@@ -107,7 +107,7 @@ class TimingsPage(ttk.Frame):
             ttk.Label(r, text=key, style="PanelDim.TLabel", width=12).pack(side="left")
             self.derived[key] = ttk.Label(r, text="—", style="Mid.TLabel")
             self.derived[key].pack(side="left")
-        self.msg_lbl = ttk.Label(out, text="", style="Warn.TLabel", wraplength=300, justify="left")
+        self.msg_lbl = ttk.Label(out, text="", style="Warn.TLabel", wraplength=440, justify="left")
         self.msg_lbl.pack(anchor="w", pady=(14, 0))
 
         for key, var in self.vars.items():

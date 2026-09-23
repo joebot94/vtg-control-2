@@ -66,6 +66,8 @@ def unavailable_reason() -> str | None:
         import win32gui  # noqa: F401
     except ImportError as exc:
         return f"Missing Windows package: {exc.name} (pip install pywinauto pywin32)"
+    except Exception as exc:  # noqa: BLE001 — e.g. comtypes cache trouble in a frozen exe
+        return f"UI Automation unavailable: {exc}"
     return None
 
 

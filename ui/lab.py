@@ -8,10 +8,11 @@ from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
 from vtg.capture import ERR, INFO, RX, TX, Event, load_jsonl, parse_escapes, save_jsonl, to_ascii, to_hex
+from vtg.paths import data_dir
 
 from . import theme
 
-CAPTURE_DIR = Path(__file__).resolve().parents[1] / "captures"
+CAPTURE_DIR = data_dir("captures")
 MAX_LINES = 5000
 
 
@@ -37,12 +38,14 @@ class LabPage(ttk.Frame):
         ttk.Checkbutton(bar, text="Poll VTG status", variable=self.poll_var,
                         command=self._toggle_poll, style="Bar.TCheckbutton").pack(side="left", padx=(12, 0))
 
-        ttk.Button(bar, text="Save capture…", command=self.save_capture).pack(side="right")
-        ttk.Button(bar, text="Open capture…", command=self.open_capture).pack(side="right", padx=6)
+        bar = ttk.Frame(self)
+        bar.pack(fill="x", pady=(0, 8))
+        ttk.Button(bar, text="Clear", command=self.clear).pack(side="left")
+        ttk.Button(bar, text="Open…", command=self.open_capture).pack(side="left", padx=6)
+        ttk.Button(bar, text="Save capture…", command=self.save_capture).pack(side="left")
         self.live_btn = ttk.Button(bar, text="Back to live", command=self.back_to_live)
-        ttk.Button(bar, text="Clear", command=self.clear).pack(side="right")
 
-        self.banner = ttk.Label(self, text="", style="Dim.TLabel")
+        self.banner = ttk.Label(self, text="", style="Dim.TLabel", wraplength=480)
         self.banner.pack(fill="x")
 
         # ---- log ----
@@ -54,8 +57,10 @@ class LabPage(ttk.Frame):
                             highlightcolor=theme.LINE, wrap="none", padx=8, pady=6,
                             selectbackground=theme.ACCENT, selectforeground="#000000")
         sb = ttk.Scrollbar(wrap, orient="vertical", command=self.text.yview)
-        self.text.configure(yscrollcommand=sb.set, state="disabled")
+        xsb = ttk.Scrollbar(wrap, orient="horizontal", command=self.text.xview)
+        self.text.configure(yscrollcommand=sb.set, xscrollcommand=xsb.set, state="disabled")
         sb.pack(side="right", fill="y")
+        xsb.pack(side="bottom", fill="x")
         self.text.pack(side="left", fill="both", expand=True)
         self.text.tag_configure(TX, foreground=theme.ACCENT)
         self.text.tag_configure(RX, foreground=theme.OK)
@@ -78,8 +83,7 @@ class LabPage(ttk.Frame):
                         style="Bar.TCheckbutton").pack(side="left", padx=8)
         self.send_btn = ttk.Button(row, text="SEND", style="Accent.TButton", command=self.send_raw)
         self.send_btn.pack(side="left")
-        ttk.Label(self, text="Escapes: \\r \\n \\e (Esc) \\xNN \\\\   ·   ↑/↓ history   ·   "
-                            "raw sends go through the same queue as everything else",
+        ttk.Label(self, text="Escapes: \\r \\n \\e (Esc) \\xNN \\\\   ·   ↑/↓ history",
                   style="Dim.TLabel").pack(anchor="w", pady=(4, 0))
         self._hist: list[str] = []
         self._hist_pos = 0
@@ -209,7 +213,7 @@ class LabPage(ttk.Frame):
         self.viewing = (Path(path).name, events)
         self.banner.configure(text=f"VIEWING FILE {Path(path).name} — {len(events)} events "
                                    f"(live traffic hidden)", foreground=theme.WARN)
-        self.live_btn.pack(side="right", padx=6)
+        self.live_btn.pack(side="left", padx=6)
         self.rerender()
 
     def back_to_live(self) -> None:

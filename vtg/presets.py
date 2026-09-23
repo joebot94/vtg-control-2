@@ -23,9 +23,10 @@ import json
 import re
 from pathlib import Path
 
+from .paths import data_dir
 from .timing import ClockSource, Timing, TimingError
 
-PRESET_DIR = Path(__file__).resolve().parents[1] / "presets"
+PRESET_DIR = data_dir("presets")
 
 _INT_FIELDS = ("width", "height",
                "h_front_porch", "h_sync_width", "h_back_porch",

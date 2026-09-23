@@ -8,8 +8,14 @@ python main.py                      # pick MOCK in the Port box to run without h
 python -m unittest discover tests   # offline tests
 ```
 
-The only dependency is `pyserial`. HCFR follow mode also needs `pywinauto` and
-`pywin32`, plus `pytesseract` and `Pillow` for the OCR fallback. It only runs on
+The only dependency is `pyserial`.
+
+**Windows exe:** every push to `main` builds `VTGControl2.exe` on a GitHub Actions Windows
+runner. The runner also runs the tests and launches the exe with `--selftest`. Download it
+from the run's *Artifacts* on the Actions tab. Pushing a `v*` tag also attaches it to a
+release. `presets/` and `captures/` are created next to the exe.
+
+HCFR follow mode also needs `pywinauto` and `pywin32` (bundled in the exe), plus `pytesseract` and `Pillow` for the OCR fallback. It only runs on
 Windows.
 
 ## Layout

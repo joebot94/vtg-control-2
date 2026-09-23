@@ -26,9 +26,9 @@ class HCFRPage(ttk.Frame):
         self.status_lbl.pack(anchor="w", pady=(6, 0))
         ttk.Label(box, text="Colour cues (Red Primary … Yellow Secondary, White) set the VTG colour; "
                             "“NN% Gray” sets IRE to the nearest 10. Only changes are sent.",
-                  style="PanelDim.TLabel", wraplength=760, justify="left").pack(anchor="w", pady=(6, 0))
+                  style="PanelDim.TLabel", wraplength=460, justify="left").pack(anchor="w", pady=(6, 0))
 
-        box = ttk.LabelFrame(self, text="TEST — paste HCFR text, see what would be sent", padding=12)
+        box = ttk.LabelFrame(self, text="TEST — paste HCFR text", padding=12)
         box.pack(fill="both", expand=True, pady=(10, 0))
         self.test_text = tk.Text(box, height=6, bg=theme.PANEL_HI, fg=theme.FG,
                                  insertbackground=theme.FG, relief="flat", font=app.fonts["mono"],
