@@ -91,6 +91,10 @@ class Parsers(unittest.TestCase):
         self.assertEqual(protocol.parse_int("Ire050"), 50)
         self.assertEqual(protocol.parse_resolution("001*99"), "240p")
         self.assertEqual(protocol.parse_resolution("Rte 010*06"), "1080i")
+        self.assertEqual(protocol.parse_resolution("1*99"), "240p")      # unpadded view reply
+        self.assertEqual(protocol.parse_resolution("Rte10*6"), "1080i")
+        self.assertAlmostEqual(protocol.parse_temperature_f("095F  35C"), 95.0)  # manual format
+        self.assertEqual(protocol.parse_pattern("Tst09"), "PLUGE")
         self.assertIsNone(protocol.parse_resolution("099*99"))
         self.assertAlmostEqual(protocol.parse_temperature_f("Tmp +095.5F"), 95.5)
         self.assertEqual(protocol.parse_pattern("9"), "PLUGE")

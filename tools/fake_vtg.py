@@ -13,11 +13,14 @@ command when the line goes quiet for --gap seconds.
 
 Replies, in order:
   1. tools/fake_vtg_replies.json  {"exact command": "reply"}  (edit while running;
-     reloaded per command)  "" means stay silent
-  2. identity answers taken from the official software's hi.vtg
-  3. the app's MockTransport VTG (N, P, J, *10#, *15#, =, 20S …)
-  4. anything else: printable -> "E10", binary -> silent (logged as UNKNOWN)
-Every reply gets \\r\\n appended.
+     reloaded per command)  "" means stay silent. A list of replies is used in
+     rotation, one per request, for trying out candidate formats.
+  2. the app's MockTransport VTG, in the manual's reply formats
+     (N, Q, *Q, I, P, J, *10#, *15#, =, 20S …)
+  3. anything else: printable -> "E10", binary -> silent (logged as UNKNOWN)
+Every reply gets \\r\\n appended and is sent after --delay seconds plus
+~1 ms per byte, like a real VTG at 9600 baud (an instant reply can be
+thrown away by software that flushes its input buffer after sending).
 
 Directions in the capture: TX = software -> VTG, RX = VTG -> software
 (the same point of view as the LAB).
@@ -41,13 +44,6 @@ from vtg.transport import _FakeVTG  # noqa: E402
 
 REPLIES_FILE = Path(__file__).with_name("fake_vtg_replies.json")
 
-# From hi.vtg <Misc PartNumber="60-564-01" FW1="2.00.0001" ...>. Formats are guesses.
-IDENTITY = {
-    "N": "60-564-01",
-    "Q": "2.00",
-    "*Q": "2.00.0001",
-    "I": "VTG 400",
-}
 
 COLOR = {"TX": "\033[38;5;208m", "RX": "\033[32m", "INFO": "\033[90m", "ERR": "\033[31m"}
 
@@ -62,14 +58,21 @@ def load_overrides() -> dict:
         return {}
 
 
+_rotation: dict[str, int] = {}
+
+
 def reply_for(cmd_bytes: bytes, vtg: _FakeVTG) -> tuple[str | None, str]:
     """(reply or None for silence, where the reply came from)."""
     text = cmd_bytes.decode("latin-1").strip("\r\n")
     overrides = load_overrides()
     if text in overrides:
-        return overrides[text] or None, "override"
-    if text in IDENTITY:
-        return IDENTITY[text], "identity"
+        value = overrides[text]
+        if isinstance(value, list):  # rotate through candidates
+            i = _rotation.get(text, 0)
+            _rotation[text] = i + 1
+            value = value[i % len(value)]
+            return value or None, f"override candidate {i % len(overrides[text]) + 1}/{len(overrides[text])}"
+        return value or None, "override"
     printable = all(0x20 <= b < 0x7F or b in (0x0D, 0x0A) for b in cmd_bytes)
     if not printable:
         return None, "UNKNOWN binary"
@@ -81,6 +84,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--socket", default="/tmp/vtg-fake.sock")
     ap.add_argument("--gap", type=float, default=0.05, help="idle seconds that end a command")
+    ap.add_argument("--delay", type=float, default=0.03, help="seconds before replying")
     ap.add_argument("--capture", default=None, help="JSONL path (default captures/fake_<time>.jsonl)")
     args = ap.parse_args()
 
@@ -109,7 +113,7 @@ def main() -> int:
             continue
         log.info(f"connected to {args.socket}")
         try:
-            serve(sock, log, vtg, args.gap)
+            serve(sock, log, vtg, args.gap, args.delay)
         except KeyboardInterrupt:
             log.info("stopped")
             return 0
@@ -121,7 +125,7 @@ def main() -> int:
         time.sleep(1)
 
 
-def serve(sock: socket.socket, log: CaptureLog, vtg: _FakeVTG, gap: float) -> None:
+def serve(sock: socket.socket, log: CaptureLog, vtg: _FakeVTG, gap: float, delay: float) -> None:
     buf = bytearray()
     sock.settimeout(gap)
     while True:
@@ -141,6 +145,7 @@ def serve(sock: socket.socket, log: CaptureLog, vtg: _FakeVTG, gap: float) -> No
         log.tx(cmd, note=source)
         if answer is not None:
             data = answer.encode("latin-1") + b"\r\n"
+            time.sleep(delay + len(data) * 0.00104)  # 10 bits/byte at 9600 baud
             sock.sendall(data)
             log.rx(data)
 

@@ -138,10 +138,9 @@ def list_serial_ports() -> list[str]:
 class _FakeVTG:
     """Just enough VTG state to answer the commands the app sends.
 
-    Reply formats are guesses: they match what the May 2025 app parsed
-    (bare numbers for IRE/pattern, "nnn*nn" for resolution, "...F" for
-    temperature, the part number for N). Replace with real captured
-    replies once the adapter is back.
+    Reply formats follow the SIS table in Extron's VTG 400D/400 DVI manual
+    (rev C, pp. 3-6..3-10): set commands echo a tag (Pwr1, Tst09, Vlv50,
+    Col7, Rte1*99), views return the bare value. Zero padding is a guess.
     """
 
     def __init__(self) -> None:
@@ -149,36 +148,49 @@ class _FakeVTG:
         self.ire = 50
         self.pattern = 17
         self.color = 7
-        self.resolution = "001*99"
+        self.rate = (1, 99)
         self.temp_f = 96.0
 
     def handle(self, cmd: str) -> str:
-        if cmd == "N":
+        c = cmd.upper() if len(cmd) <= 2 else cmd  # single-letter commands are case-insensitive
+        if c == "N":
             return "60-564-01"
-        if m := re.fullmatch(r"([01])P", cmd):
+        if c == "Q":
+            return "2.00"
+        if c == "*Q":
+            return "2.00.0001"
+        if c == "I":
+            return f"Pat{self.pattern:02d} Rte{self.rate[0]:03d} Grp{self.rate[1]} Tmo0 Asq1"
+        if m := re.fullmatch(r"([01])P", c):
             self.power = int(m[1])
             return f"Pwr{self.power}"
+        if c == "P":
+            return str(self.power)
         if m := re.fullmatch(r"(\d{1,3})\*15#", cmd):
             self.ire = int(m[1])
-            return str(self.ire)
+            return f"Vlv{self.ire}"
         if cmd == "15#":
             return str(self.ire)
-        if m := re.fullmatch(r"(\d{1,2})J", cmd):
+        if m := re.fullmatch(r"(\d{1,2})J", c):
+            if not 1 <= int(m[1]) <= 28:
+                return "E07"
             self.pattern = int(m[1])
-            return str(self.pattern)
-        if cmd == "J":
-            return str(self.pattern)
+            return f"Tst{self.pattern:02d}"
+        if c == "J":
+            return f"{self.pattern:02d}"
         if m := re.fullmatch(r"([0-7])\*10#", cmd):
             self.color = int(m[1])
+            return f"Col{self.color}"
+        if cmd == "10#":
             return str(self.color)
-        if m := re.fullmatch(r"(\d{3}\*\d{2})=", cmd):
-            self.resolution = m[1]
-            return self.resolution
+        if m := re.fullmatch(r"(\d{1,3})\*(\d{1,2})=", cmd):
+            self.rate = (int(m[1]), int(m[2]))
+            return f"Rte{self.rate[0]}*{self.rate[1]}"
         if cmd == "=":
-            return self.resolution
+            return f"{self.rate[0]}*{self.rate[1]}"
         if cmd == "20S":
             self.temp_f += random.uniform(-0.4, 0.5)
-            return f"Tmp {self.temp_f:+06.1f}F"
+            return f"{round(self.temp_f):03d}F  {round((self.temp_f - 32) / 1.8):02d}C"
         return "E10"  # Extron's generic "invalid command"
 
 

@@ -4,9 +4,9 @@ Every Extron SIS string in the app lives in this file. The UI calls
 methods like `vtg.set_resolution("240p")`; it never sees "001*99=".
 
 Command strings were carried over from the working May 2025 app
-(VTG400+HCFR.py / vtg400qt.py). Reply parsers are tolerant because the
-real reply formats have not been captured yet — they pull the number out
-of whatever comes back.
+(VTG400+HCFR.py / vtg400qt.py). Reply formats are documented in
+Extron's VTG 400D/400 DVI manual (rev C, SIS table), but parsers stay
+tolerant — they pull the number out of whatever comes back.
 
 Custom timing: NOT IMPLEMENTED. The official Extron software programs
 custom resolutions over RS-232 with a protocol we have not captured.
@@ -145,9 +145,10 @@ def parse_resolution(reply: str) -> str | None:
     m = re.search(r"(\d+\*\d+)", reply)
     if not m:
         raise ProtocolError(f"no resolution code in {reply!r}")
-    code = m[1]
+    # compare as numbers: the VTG may answer "1*99" for the "001*99=" command
+    code = tuple(int(x) for x in m[1].split("*"))
     for name, cmd in RESOLUTIONS.items():
-        if cmd.rstrip("=") == code:
+        if tuple(int(x) for x in cmd.rstrip("=").split("*")) == code:
             return name
     return None
 
