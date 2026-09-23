@@ -7,3 +7,4 @@ dist/
 selftest.txt
 settings.json
 research/
+tools/fake_vtg_replies.json
