@@ -62,11 +62,8 @@ class LabPage(ttk.Frame):
         sb.pack(side="right", fill="y")
         xsb.pack(side="bottom", fill="x")
         self.text.pack(side="left", fill="both", expand=True)
-        self.text.tag_configure(TX, foreground=theme.ACCENT)
-        self.text.tag_configure(RX, foreground=theme.OK)
-        self.text.tag_configure(INFO, foreground=theme.FG_DIM)
-        self.text.tag_configure(ERR, foreground=theme.ERR)
-        self.text.tag_configure("time", foreground=theme.FG_DIM)
+        self._restyle_text()
+        app.on_theme_change(self._restyle_text)
 
         # ---- raw entry ----
         row = ttk.Frame(self)
@@ -88,15 +85,20 @@ class LabPage(ttk.Frame):
         self._hist: list[str] = []
         self._hist_pos = 0
 
-        s = ttk.Style()
-        s.configure("Bar.TRadiobutton", background=theme.BG)
-        s.map("Bar.TRadiobutton", background=[("active", theme.BG)])
-        s.configure("Bar.TCheckbutton", background=theme.BG)
-        s.map("Bar.TCheckbutton", background=[("active", theme.BG)])
 
         app.on_event(self._on_event)
         app.on_state_change(self._on_state)
         self._on_state()
+
+    def _restyle_text(self) -> None:
+        self.text.configure(bg=theme.PANEL, fg=theme.FG, insertbackground=theme.FG,
+                            highlightbackground=theme.LINE, highlightcolor=theme.LINE,
+                            selectbackground=theme.ACCENT)
+        self.text.tag_configure(TX, foreground=theme.ACCENT)
+        self.text.tag_configure(RX, foreground=theme.OK)
+        self.text.tag_configure(INFO, foreground=theme.FG_DIM)
+        self.text.tag_configure(ERR, foreground=theme.ERR)
+        self.text.tag_configure("time", foreground=theme.FG_DIM)
 
     # ----------------------------------------------------------- render --
     def _line(self, ev: Event) -> list[tuple[str, str]]:

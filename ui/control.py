@@ -48,10 +48,6 @@ class ButtonGroup(ttk.Frame):
             if name in self._styles:  # swatches: colour can't show selection, text can
                 b.configure(text=f"● {name}" if on else str(name))
 
-    def set_enabled(self, enabled: bool) -> None:
-        for b in self._buttons.values():
-            b.state(["!disabled"] if enabled else ["disabled"])
-
 
 class ControlPage(ttk.Frame):
     def __init__(self, master, app):
@@ -59,7 +55,8 @@ class ControlPage(ttk.Frame):
         self.app = app
         self.state_vals = {"resolution": None, "pattern": None, "color": None,
                            "ire": None, "power": None, "temp": None}
-        self._make_swatch_styles()
+        self._make_styles()
+        app.on_theme_change(self._make_styles)
 
         # ---- readout ----
         top = ttk.Frame(self, style="Panel.TFrame", padding=(14, 8))
@@ -71,35 +68,24 @@ class ControlPage(ttk.Frame):
         self.detail_lbl = ttk.Label(top, text="", style="PanelDim.TLabel", font=app.fonts["mono"])
         self.detail_lbl.pack(anchor="w")
 
-        def section(title: str, pady=(8, 0)) -> ttk.LabelFrame:
+        def section(title: str) -> ttk.LabelFrame:
             f = ttk.LabelFrame(self, text=title, padding=(8, 6))
-            f.pack(fill="x", pady=pady)
+            f.pack(fill="x", pady=(8, 0))
             return f
 
-        # OUTPUT and UNIT share a row
+        # Top to bottom = most to least used, like the original app.
         row = ttk.Frame(self)
         row.pack(fill="x", pady=(8, 0))
-        f = ttk.LabelFrame(row, text="OUTPUT", padding=(8, 6))
+        f = ttk.LabelFrame(row, text="POWER", padding=(8, 6))
         f.pack(side="left", fill="both", expand=True, padx=(0, 4))
-        self.power_group = ButtonGroup(f, ["ON", "OFF"], self.set_power, 2, width=6)
+        power_styles = {"ON": ("PowerOn.TButton", "PowerOnSel.TButton"),
+                        "OFF": ("PowerOff.TButton", "PowerOffSel.TButton")}
+        self.power_group = ButtonGroup(f, ["ON", "OFF"], self.set_power, 2, styles=power_styles, width=6)
         self.power_group.pack(fill="x")
         f = ttk.LabelFrame(row, text="UNIT", padding=(8, 6))
         f.pack(side="left", fill="both", expand=True, padx=(4, 0))
         self.temp_lbl = ttk.Label(f, text="Temperature  —", style="Mono.TLabel")
         self.temp_lbl.pack(anchor="w", pady=4)
-
-        f = section("RESOLUTION")
-        self.res_group = ButtonGroup(f, list(RESOLUTIONS), self.set_resolution, 4, width=8)
-        self.res_group.pack(fill="x")
-
-        f = section("PATTERN")
-        self.pat_group = ButtonGroup(f, list(PATTERNS), self.set_pattern, 3)
-        self.pat_group.pack(fill="x")
-
-        f = section("COLOR")
-        styles = {n: (f"Sw{n}.TButton", f"Sw{n}On.TButton") for n in COLORS}
-        self.color_group = ButtonGroup(f, list(COLORS), self.set_color, 4, styles=styles, width=8)
-        self.color_group.pack(fill="x")
 
         f = section("IRE")
         self.ire_group = ButtonGroup(f, IRE_STEPS, self.set_ire, 6, width=4)
@@ -111,35 +97,55 @@ class ControlPage(ttk.Frame):
         self.ire_spin = ttk.Spinbox(row, from_=0, to=100, textvariable=self.ire_var, width=5)
         self.ire_spin.pack(side="left", padx=6)
         self.ire_spin.bind("<Return>", lambda e: self._set_exact_ire())
-        self.ire_set_btn = ttk.Button(row, text="Set", command=self._set_exact_ire)
-        self.ire_set_btn.pack(side="left")
+        ttk.Button(row, text="Set", command=self._set_exact_ire).pack(side="left")
 
-        self.groups = [self.res_group, self.pat_group, self.power_group,
-                       self.color_group, self.ire_group]
+        f = section("PATTERN")
+        self.pat_group = ButtonGroup(f, list(PATTERNS), self.set_pattern, 3)
+        self.pat_group.pack(fill="x")
+
+        f = section("COLOR")
+        styles = {n: (f"Sw{n}.TButton", f"Sw{n}On.TButton") for n in COLORS}
+        self.color_group = ButtonGroup(f, list(COLORS), self.set_color, 4, styles=styles, width=8)
+        self.color_group.pack(fill="x")
+
+        f = section("RESOLUTION")
+        self.res_group = ButtonGroup(f, list(RESOLUTIONS), self.set_resolution, 4, width=8)
+        self.res_group.pack(fill="x")
+
         app.on_state_change(self._on_connection)
         self._on_connection()
 
-    def _make_swatch_styles(self) -> None:
+    def build_footer(self) -> None:
+        """Enable HCFR + Toggle Theme, as in the original app. Called once all pages exist."""
+        row = ttk.Frame(self)
+        row.pack(fill="x", side="bottom", pady=(10, 0))
+        self.app.hcfr.add_toggle(row).pack(side="left")
+        ttk.Button(row, text="Toggle Theme", command=self.app.toggle_theme).pack(side="right")
+
+    def _make_styles(self) -> None:
         s = ttk.Style()
+        for name, col in (("PowerOn", theme.POWER_ON), ("PowerOff", theme.POWER_OFF)):
+            s.configure(f"{name}.TButton", background=col, foreground="#ffffff")
+            s.map(f"{name}.TButton", background=[("active", col), ("pressed", col)])
+            s.configure(f"{name}Sel.TButton", background=col, foreground="#ffffff",
+                        font=self.app.fonts["ui_bold"])
+            s.map(f"{name}Sel.TButton", background=[("active", col), ("pressed", col)])
         for name, hexcol in SWATCHES.items():
             fg = "#000000" if name in DARK_TEXT else "#ffffff"
             s.configure(f"Sw{name}.TButton", background=hexcol, foreground=fg,
-                        bordercolor=theme.LINE, borderwidth=1)
-            s.map(f"Sw{name}.TButton", background=[("disabled", theme.PANEL)],
-                  foreground=[("disabled", theme.FG_DIM)])
+                        bordercolor=theme.LINE, lightcolor=hexcol, darkcolor=hexcol,
+                        relief="solid", borderwidth=1)
+            s.map(f"Sw{name}.TButton", background=[("active", hexcol), ("pressed", hexcol)])
             s.configure(f"Sw{name}On.TButton", background=hexcol, foreground=fg,
-                        bordercolor=theme.ACCENT, lightcolor=theme.ACCENT,
-                        darkcolor=theme.ACCENT, borderwidth=3,
+                        bordercolor=theme.ACCENT, lightcolor=hexcol,
+                        darkcolor=hexcol, relief="solid", borderwidth=2,
                         font=self.app.fonts["ui_bold"])
+            s.map(f"Sw{name}On.TButton", background=[("active", hexcol), ("pressed", hexcol)])
 
     # ------------------------------------------------------------ state --
     def _on_connection(self) -> None:
-        on = self.app.session is not None
-        for g in self.groups:
-            g.set_enabled(on)
-        for w in (self.ire_spin, self.ire_set_btn, self.refresh_btn):
-            w.state(["!disabled"] if on else ["disabled"])
-        if not on:
+        # Buttons stay lit while disconnected (clicking says "Not connected").
+        if self.app.session is None:
             for k in self.state_vals:
                 self.state_vals[k] = None
         self._render()
@@ -155,7 +161,7 @@ class ControlPage(ttk.Frame):
             f"PAT {v['pattern'] or '—'}",
             f"COL {v['color'] or '—'}",
             f"IRE {'—' if v['ire'] is None else v['ire']}",
-            f"OUT {v['power'] or '—'}",
+            f"PWR {v['power'] or '—'}",
         ]
         self.detail_lbl.configure(text="  ".join(parts))
         self.res_group.select(v["resolution"])
@@ -173,6 +179,12 @@ class ControlPage(ttk.Frame):
     def vtg(self):
         return self.app.session.vtg if self.app.session else None
 
+    def _need_vtg(self):
+        """The protocol for a button press, or None (and a status-bar hint)."""
+        if self.vtg is None:
+            self.app.notify("Not connected — pick a port (or MOCK) and Connect")
+        return self.vtg
+
     def _do(self, fut: Future, **optimistic) -> None:
         self._update(**optimistic)
 
@@ -182,19 +194,19 @@ class ControlPage(ttk.Frame):
         self.app.when_done(fut, done)
 
     def set_resolution(self, name: str) -> None:
-        if self.vtg:
+        if self._need_vtg():
             self._do(self.vtg.set_resolution(name), resolution=name)
 
     def set_pattern(self, name: str) -> None:
-        if self.vtg:
+        if self._need_vtg():
             self._do(self.vtg.set_pattern(name), pattern=name)
 
     def set_color(self, name: str) -> None:
-        if self.vtg:
+        if self._need_vtg():
             self._do(self.vtg.set_color(name), color=name)
 
     def set_ire(self, value: int) -> None:
-        if self.vtg:
+        if self._need_vtg():
             self.ire_var.set(str(value))
             self._do(self.vtg.set_ire(int(value)), ire=int(value))
 
@@ -207,7 +219,7 @@ class ControlPage(ttk.Frame):
             self.set_ire(v)
 
     def set_power(self, which: str) -> None:
-        if self.vtg:
+        if self._need_vtg():
             self._do(self.vtg.set_power(which == "ON"), power=which)
 
     # ------------------------------------------------------------ polling --
@@ -228,5 +240,7 @@ class ControlPage(ttk.Frame):
             self._read(self.vtg.query_temperature(), "temp")
 
     def refresh_all(self) -> None:
+        if not self._need_vtg():
+            return
         self.refresh_from_device()
         self.refresh_temperature()

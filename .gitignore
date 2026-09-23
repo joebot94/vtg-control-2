@@ -5,3 +5,4 @@ captures/*.jsonl
 build/
 dist/
 selftest.txt
+settings.json

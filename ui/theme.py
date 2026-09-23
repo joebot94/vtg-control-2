@@ -8,17 +8,55 @@ import tkinter as tk
 from tkinter import font as tkfont
 from tkinter import ttk
 
-BG = "#1a1b1d"        # window
-PANEL = "#232427"     # frames / fields
-PANEL_HI = "#2e3034"  # buttons
-LINE = "#3a3c41"      # borders
-FG = "#d9d9d6"
-FG_DIM = "#8b8d91"
-ACCENT = "#ff8a1f"    # orange
-ACCENT_DIM = "#8a4a12"
-OK = "#3ecf6a"
-WARN = "#e6b422"
-ERR = "#e5484d"
+PALETTES = {
+    "dark": dict(
+        BG="#1a1b1d",        # window
+        PANEL="#232427",     # frames / fields
+        PANEL_HI="#2e3034",  # buttons
+        BTN_ACTIVE="#3a3d42",
+        LINE="#3a3c41",      # borders
+        FG="#d9d9d6",
+        FG_DIM="#8b8d91",
+        ACCENT="#ff8a1f",    # orange
+        ACCENT_HI="#ffa04a",
+        ACCENT_DIM="#8a4a12",
+        OK="#3ecf6a",
+        WARN="#e6b422",
+        ERR="#e5484d",
+    ),
+    "light": dict(
+        BG="#e4e4e0",
+        PANEL="#f4f4f1",
+        PANEL_HI="#d9d9d4",
+        BTN_ACTIVE="#cacac4",
+        LINE="#b4b4ae",
+        FG="#1c1c1e",
+        FG_DIM="#66666b",
+        ACCENT="#f07c10",
+        ACCENT_HI="#ff9a3d",
+        ACCENT_DIM="#f6c08c",
+        OK="#1d9447",
+        WARN="#a87a00",
+        ERR="#cc3338",
+    ),
+}
+# Module-level colour names other modules read (theme.PANEL etc.); set_palette swaps them.
+BG = PANEL = PANEL_HI = BTN_ACTIVE = LINE = FG = FG_DIM = ""
+ACCENT = ACCENT_HI = ACCENT_DIM = OK = WARN = ERR = ""
+current = "dark"
+
+# Fixed colours that read on both palettes
+POWER_ON = "#12a23a"
+POWER_OFF = "#e0243f"
+
+
+def set_palette(name: str) -> None:
+    global current
+    current = name if name in PALETTES else "dark"
+    globals().update(PALETTES[current])
+
+
+set_palette("dark")
 
 if sys.platform == "win32":
     UI_FAMILY, MONO_FAMILY = "Segoe UI", "Consolas"
@@ -77,15 +115,15 @@ def apply(root: tk.Tk) -> None:
     s.configure("TButton", background=PANEL_HI, foreground=FG, bordercolor=LINE,
                 padding=(10, 4), relief="flat")
     s.map("TButton",
-          background=[("disabled", PANEL), ("pressed", ACCENT_DIM), ("active", "#3a3d42")],
+          background=[("disabled", PANEL), ("pressed", ACCENT_DIM), ("active", BTN_ACTIVE)],
           foreground=[("disabled", FG_DIM)])
     s.configure("Accent.TButton", background=ACCENT, foreground="#000000", font=f["ui_bold"])
     s.map("Accent.TButton",
-          background=[("disabled", PANEL_HI), ("pressed", ACCENT_DIM), ("active", "#ffa04a")],
+          background=[("disabled", PANEL_HI), ("pressed", ACCENT_DIM), ("active", ACCENT_HI)],
           foreground=[("disabled", FG_DIM)])
     # Selected-state button used for "this is what the VTG is doing" highlighting
     s.configure("On.TButton", background=ACCENT, foreground="#000000")
-    s.map("On.TButton", background=[("active", "#ffa04a"), ("pressed", ACCENT_DIM)])
+    s.map("On.TButton", background=[("active", ACCENT_HI), ("pressed", ACCENT_DIM)])
 
     s.configure("TEntry", fieldbackground=PANEL_HI, foreground=FG, bordercolor=LINE,
                 insertcolor=FG, padding=3)
@@ -103,6 +141,10 @@ def apply(root: tk.Tk) -> None:
     s.configure("TRadiobutton", background=PANEL, foreground=FG, indicatorbackground=PANEL_HI)
     s.map("TRadiobutton", background=[("active", PANEL)],
           indicatorforeground=[("selected", ACCENT)])
+
+    for kind in ("TRadiobutton", "TCheckbutton"):  # same controls on the window background
+        s.configure(f"Bar.{kind}", background=BG)
+        s.map(f"Bar.{kind}", background=[("active", BG)])
 
     s.configure("TNotebook", background=BG, borderwidth=0, tabmargins=(0, 4, 0, 0))
     s.configure("TNotebook.Tab", background=PANEL, foreground=FG_DIM, padding=(11, 5),
@@ -123,9 +165,13 @@ def apply(root: tk.Tk) -> None:
 class Dot(tk.Canvas):
     """Small round status lamp."""
 
-    def __init__(self, master, size: int = 12, color: str = FG_DIM, bg: str = BG):
-        super().__init__(master, width=size, height=size, bg=bg, highlightthickness=0)
-        self._oval = self.create_oval(1, 1, size - 1, size - 1, fill=color, outline="")
+    def __init__(self, master, size: int = 12, color: str | None = None, bg: str | None = None):
+        # colours resolved now, not at import, so a light-theme start works
+        super().__init__(master, width=size, height=size, bg=bg or BG, highlightthickness=0)
+        self._oval = self.create_oval(1, 1, size - 1, size - 1, fill=color or FG_DIM, outline="")
 
     def set(self, color: str) -> None:
         self.itemconfigure(self._oval, fill=color)
+
+    def restyle(self, bg: str) -> None:
+        self.configure(bg=bg)

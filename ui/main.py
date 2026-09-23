@@ -17,7 +17,7 @@ from vtg.capture import ERR, RX, CaptureLog, Event, to_ascii
 from vtg.session import MOCK_PORT, Session, open_session
 from vtg.transport import TransportError, list_serial_ports
 
-from . import theme
+from . import settings, theme
 from .control import ControlPage
 from .hcfr import HCFRPage
 from .lab import LabPage
@@ -39,6 +39,7 @@ class App:
         self._q: queue.Queue = queue.Queue()
         self._event_listeners: list[Callable[[Event], None]] = []
         self._state_listeners: list[Callable[[], None]] = []
+        self._theme_listeners: list[Callable[[], None]] = []
         self._poll_jobs: dict[str, str] = {}
         self._recent_errors = 0
         self.polling_enabled = True  # the Lab turns this off for clean captures
@@ -46,6 +47,7 @@ class App:
         root.title(APP_NAME)
         root.geometry("540x860")
         root.minsize(500, 760)
+        theme.set_palette(settings.load().get("theme", "dark"))
         theme.apply(root)
         self.fonts = theme.fonts()
 
@@ -64,6 +66,7 @@ class App:
             self.notebook.add(page, text=text)
         self._build_status()
 
+        self.control.build_footer()  # needs the HCFR page to exist
         root.protocol("WM_DELETE_WINDOW", self.quit)
         self._set_state_ui()
         root.after(40, self._pump)
@@ -167,8 +170,9 @@ class App:
     # ----------------------------------------------------------- polling --
     def _start_polling(self) -> None:
         self._stop_polling()
-        self.poll_status()
-        self.poll_temperature()
+        self.control.refresh_all()  # one full read now, unconditionally
+        self._reschedule(POLL_STATUS_MS, self.poll_status)
+        self._reschedule(POLL_TEMPERATURE_MS, self.poll_temperature)
 
     def _stop_polling(self) -> None:
         for job in self._poll_jobs.values():
@@ -202,6 +206,25 @@ class App:
 
     def on_event(self, fn: Callable[[Event], None]) -> None:
         self._event_listeners.append(fn)
+
+    def on_theme_change(self, fn: Callable[[], None]) -> None:
+        self._theme_listeners.append(fn)
+
+    def toggle_theme(self) -> None:
+        theme.set_palette("light" if theme.current == "dark" else "dark")
+        theme.apply(self.root)
+        for dot in (self.conn_dot, self.health_dot):
+            dot.restyle(theme.BG)
+        self.last_lbl.configure(foreground=theme.FG_DIM)
+        for fn in self._theme_listeners:
+            fn()
+        self._set_state_ui()
+        settings.save(theme=theme.current)
+
+    def notify(self, text: str) -> None:
+        """Short message in the status bar (e.g. 'Not connected')."""
+        self.last_lbl.configure(text=text, foreground=theme.WARN)
+        self.root.after(2500, lambda: self.last_lbl.configure(foreground=theme.FG_DIM))
 
     def on_state_change(self, fn: Callable[[], None]) -> None:
         self._state_listeners.append(fn)

@@ -39,29 +39,29 @@ RESOLUTIONS = {
     "1080i":  "010*06=",
 }
 
-# name -> pattern number for "{n}J"
+# name -> pattern number for "{n}J" (dict order = button order, as in the original app)
 PATTERNS = {
     "Window20":   15,
     "Window80":   14,
     "VarIRE":     16,
-    "FullScreen": 17,
     "4x4Cross":    6,
     "Coarse":      7,
     "FineCross":   8,
     "ColorBar":   13,
+    "FullScreen": 17,
     "PLUGE":       9,
 }
 
-# name -> color code for "{code}*10#"
+# name -> color code for "{code}*10#" (dict order = button order)
 COLORS = {
     "Black":   0,
-    "Blue":    1,
-    "Green":   2,
-    "Cyan":    3,
     "Red":     4,
+    "Green":   2,
+    "Blue":    1,
+    "White":   7,
     "Magenta": 5,
     "Yellow":  6,
-    "White":   7,
+    "Cyan":    3,
 }
 
 IRE_STEPS = list(range(0, 101, 10))
