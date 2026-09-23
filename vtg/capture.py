@@ -17,6 +17,7 @@ convenience rendering (non-printables escaped) and is ignored on load.
 from __future__ import annotations
 
 import json
+import re
 import threading
 import time
 from dataclasses import dataclass
@@ -131,3 +132,26 @@ def save_jsonl(events: list[Event], path: str | Path) -> None:
 def load_jsonl(path: str | Path) -> list[Event]:
     with open(path, encoding="utf-8") as f:
         return [Event.from_json(line) for line in f if line.strip()]
+
+
+def parse_escapes(text: str) -> bytes:
+    """Raw-entry text -> bytes. Understands \\r \\n \\t \\e \\0 \\\\ and \\xNN."""
+    out = bytearray()
+    i = 0
+    simple = {"r": 0x0D, "n": 0x0A, "t": 0x09, "e": 0x1B, "0": 0x00, "\\": 0x5C}
+    while i < len(text):
+        ch = text[i]
+        if ch != "\\" or i + 1 >= len(text):
+            out += ch.encode("latin-1")
+            i += 1
+            continue
+        nxt = text[i + 1]
+        if nxt in simple:
+            out.append(simple[nxt])
+            i += 2
+        elif nxt == "x" and re.fullmatch(r"[0-9a-fA-F]{2}", text[i + 2:i + 4]):
+            out.append(int(text[i + 2:i + 4], 16))
+            i += 4
+        else:
+            raise ValueError(f"bad escape \\{nxt} at position {i}")
+    return bytes(out)

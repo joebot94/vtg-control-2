@@ -118,6 +118,9 @@ class SerialWorker:
                         cmd.future.set_result(None)
                         return
                     raise SerialTimeout(f"no response to {shown!r}")
+                if not raw.endswith(b"\n"):
+                    # pyserial hands back whatever arrived when the timeout hit
+                    raise SerialTimeout(f"partial response {raw!r} to {shown!r}")
                 line = raw.decode("ascii", errors="replace").strip()
                 cmd.future.set_result(cmd.parser(line))
                 return

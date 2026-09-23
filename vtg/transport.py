@@ -50,10 +50,11 @@ class Transport(ABC):
         self._write(data)
 
     def readline(self, timeout: float) -> bytes:
-        """Read one line ending in \\n. Returns b"" on timeout."""
+        """Read one line ending in \\n. On timeout returns b"" or, if bytes
+        arrived without a terminator, that partial data (the caller decides)."""
         line = self._readline(timeout)
         if line:
-            self.log.rx(line)
+            self.log.rx(line, note="" if line.endswith(b"\n") else "partial: no line end before timeout")
         return line
 
     def drain(self) -> bytes:
@@ -85,8 +86,9 @@ class SerialTransport(Transport):
         import serial  # imported lazily so the mock runs without pyserial
 
         try:
-            self._ser = serial.Serial(self.port_name, self.baud, timeout=0.5,
-                                      bytesize=8, parity="N", stopbits=1)
+            # serial_for_url takes COM3 / /dev/cu.* as-is, and also loop:// for tests
+            self._ser = serial.serial_for_url(self.port_name, baudrate=self.baud, timeout=0.5,
+                                              bytesize=8, parity="N", stopbits=1)
         except Exception as exc:  # noqa: BLE001
             raise TransportError(f"open {self.port_name}: {exc}") from exc
         self.log.info(f"opened {self.label} 8N1")

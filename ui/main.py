@@ -41,6 +41,7 @@ class App:
         self._state_listeners: list[Callable[[], None]] = []
         self._poll_jobs: dict[str, str] = {}
         self._recent_errors = 0
+        self.polling_enabled = True  # the Lab turns this off for clean captures
 
         root.title(APP_NAME)
         root.geometry("900x680")
@@ -179,13 +180,13 @@ class App:
 
     def poll_status(self) -> None:
         # All queries go through the one worker queue; skip if it's backed up.
-        if self.session and self.session.worker.pending() < 3:
+        if self.session and self.polling_enabled and self.session.worker.pending() < 3:
             self.control.refresh_from_device()
         if self.session:
             self._reschedule(POLL_STATUS_MS, self.poll_status)
 
     def poll_temperature(self) -> None:
-        if self.session and self.session.worker.pending() < 3:
+        if self.session and self.polling_enabled and self.session.worker.pending() < 3:
             self.control.refresh_temperature()
         if self.session:
             self._reschedule(POLL_TEMPERATURE_MS, self.poll_temperature)
@@ -194,6 +195,10 @@ class App:
     def when_done(self, fut: Future, callback: Callable[[Future], None]) -> None:
         """Run callback(fut) on the Tk thread once the Future finishes."""
         fut.add_done_callback(lambda f: self._q.put(("future", callback, f)))
+
+    def call_soon(self, fn: Callable, *args) -> None:
+        """Thread-safe: run fn(*args) on the Tk thread."""
+        self._q.put(("call", fn, args))
 
     def on_event(self, fn: Callable[[Event], None]) -> None:
         self._event_listeners.append(fn)
@@ -207,6 +212,8 @@ class App:
                 item = self._q.get_nowait()
                 if item[0] == "event":
                     self._handle_event(item[1])
+                elif item[0] == "call":
+                    item[1](*item[2])
                 else:
                     item[1](item[2])
         except queue.Empty:
@@ -239,6 +246,7 @@ class App:
         self.health_lbl.configure(text=text, foreground=color)
 
     def quit(self) -> None:
+        self.hcfr.watcher.stop()
         self.disconnect()
         self.root.destroy()
 

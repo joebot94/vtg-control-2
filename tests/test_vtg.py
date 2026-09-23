@@ -8,8 +8,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from vtg import presets, protocol  # noqa: E402
-from vtg.capture import CaptureLog, load_jsonl, save_jsonl  # noqa: E402
+from vtg import hcfr, presets, protocol  # noqa: E402
+from vtg.capture import CaptureLog, load_jsonl, parse_escapes, save_jsonl  # noqa: E402
 from vtg.session import open_session  # noqa: E402
 from vtg.timing import ClockSource, Timing, TimingError, example_320x240  # noqa: E402
 
@@ -135,6 +135,69 @@ class WorkerOrdering(unittest.TestCase):
             save_jsonl(log.events(), p)
             back = load_jsonl(p)
         self.assertEqual(back, log.events())
+
+
+class RealSerialPath(unittest.TestCase):
+    def test_serial_transport_over_pyserial_loopback(self):
+        # loop:// echoes every byte back: exercises SerialTransport + worker for real
+        log = CaptureLog()
+        s = open_session("loop://", 9600, log)
+        try:
+            self.assertFalse(s.is_mock)
+            self.assertEqual(s.vtg.send_raw(b"60-564-01\r\n").result(3), "60-564-01")
+            # echo of "10*15#" has no line end: a partial reply must fail, not parse
+            from vtg.worker import SerialTimeout
+            with self.assertRaises(SerialTimeout):
+                s.vtg.set_ire(10).result(3)
+            self.assertIn("partial", log.events()[-2].note + log.events()[-1].note)
+            dirs = [e.dir for e in log.events()]
+            self.assertIn("TX", dirs)
+            self.assertIn("RX", dirs)
+        finally:
+            s.close()
+
+
+class HCFR(unittest.TestCase):
+    def test_decide_matches_old_rules(self):
+        self.assertEqual(hcfr.decide("Measuring Red Primary"), hcfr.Decision(color="Red"))
+        self.assertEqual(hcfr.decide("MAGENTA SECONDARY"), hcfr.Decision(color="Magenta"))
+        self.assertEqual(hcfr.decide("Please display 35% Gray"), hcfr.Decision(ire=40))
+        self.assertEqual(hcfr.decide("0% gray"), hcfr.Decision(ire=0))
+        self.assertEqual(hcfr.decide("25% Gray"), hcfr.Decision(ire=30))
+        self.assertEqual(hcfr.decide("100% Gray"), hcfr.Decision(ire=100))
+        self.assertIsNone(hcfr.decide("nothing here"))
+        for d in (hcfr.Decision(color=c) for c in hcfr.COLOR_CUES.values()):
+            self.assertIn(d.color, protocol.COLORS)
+
+    def test_watcher_reports_only_changes(self):
+        import threading
+        texts = iter(["Red Primary"] * 3 + ["50% Gray"] * 3 + ["Red Primary"] + [""] * 50)
+        got, done = [], threading.Event()
+
+        def on(d):
+            got.append(d)
+            if len(got) == 3:
+                done.set()
+        orig = hcfr.POLL_INTERVAL
+        hcfr.POLL_INTERVAL = 0.001
+        try:
+            w = hcfr.HCFRWatcher(on, read_text=lambda: next(texts, ""))
+            w.start()
+            done.wait(2)
+            w.stop()
+        finally:
+            hcfr.POLL_INTERVAL = orig
+        self.assertEqual(got, [hcfr.Decision(color="Red"), hcfr.Decision(ire=50),
+                               hcfr.Decision(color="Red")])
+
+
+class Escapes(unittest.TestCase):
+    def test_parse_escapes(self):
+        self.assertEqual(parse_escapes(r"\eCV\r"), b"\x1bCV\r")
+        self.assertEqual(parse_escapes(r"W01RS|\x1b1P"), b"W01RS|\x1b1P")
+        for bad in (r"\q", r"\x4", r"\xZZ"):
+            with self.assertRaises(ValueError):
+                parse_escapes(bad)
 
 
 if __name__ == "__main__":
