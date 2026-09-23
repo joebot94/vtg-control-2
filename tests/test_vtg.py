@@ -165,6 +165,17 @@ class HCFR(unittest.TestCase):
         self.assertEqual(hcfr.decide("0% gray"), hcfr.Decision(ire=0))
         self.assertEqual(hcfr.decide("25% Gray"), hcfr.Decision(ire=30))
         self.assertEqual(hcfr.decide("100% Gray"), hcfr.Decision(ire=100))
+        # configurable step
+        self.assertEqual(hcfr.decide("25% Gray", step=5), hcfr.Decision(ire=25))
+        self.assertEqual(hcfr.decide("37% Gray", step=5), hcfr.Decision(ire=35))
+        self.assertEqual(hcfr.decide("38% Gray", step=5), hcfr.Decision(ire=40))
+        self.assertEqual(hcfr.decide("30% Gray", step=25), hcfr.Decision(ire=25))
+
+    def test_ire_steps(self):
+        self.assertEqual(protocol.ire_steps(10), list(range(0, 101, 10)))
+        self.assertEqual(len(protocol.ire_steps(5)), 21)
+        self.assertEqual(protocol.ire_steps(25), [0, 25, 50, 75, 100])
+        self.assertEqual(protocol.ire_steps(20)[-1], 100)
         self.assertIsNone(hcfr.decide("nothing here"))
         for d in (hcfr.Decision(color=c) for c in hcfr.COLOR_CUES.values()):
             self.assertIn(d.color, protocol.COLORS)

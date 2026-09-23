@@ -11,9 +11,10 @@ from concurrent.futures import Future
 from tkinter import ttk
 from typing import Callable
 
-from vtg.protocol import COLORS, IRE_STEPS, PATTERNS, RESOLUTIONS
+from vtg.protocol import (COLORS, DEFAULT_IRE_STEP, IRE_STEP_CHOICES, PATTERNS, RESOLUTIONS,
+                          ire_steps)
 
-from . import theme
+from . import settings, theme
 
 SWATCHES = {
     "Black": "#000000", "Blue": "#1f3cff", "Green": "#1fd11f", "Cyan": "#1fd6de",
@@ -88,10 +89,19 @@ class ControlPage(ttk.Frame):
         self.temp_lbl.pack(anchor="w", pady=4)
 
         f = section("IRE")
-        self.ire_group = ButtonGroup(f, IRE_STEPS, self.set_ire, 6, width=4)
-        self.ire_group.pack(fill="x")
+        self.ire_frame = f
+        step = settings.load().get("ire_step", DEFAULT_IRE_STEP)
+        self.ire_step = step if step in IRE_STEP_CHOICES else DEFAULT_IRE_STEP
+        self.ire_group: ButtonGroup | None = None
         row = ttk.Frame(f, style="Panel.TFrame")
-        row.pack(fill="x", pady=(6, 0))
+        row.pack(fill="x", side="bottom", pady=(6, 0))
+        self.step_var = tk.StringVar(value=str(self.ire_step))
+        step_box = ttk.Combobox(row, textvariable=self.step_var, width=3, state="readonly",
+                                values=[str(v) for v in IRE_STEP_CHOICES])
+        step_box.pack(side="right")
+        step_box.bind("<<ComboboxSelected>>", lambda e: self.set_ire_step(int(self.step_var.get())))
+        ttk.Label(row, text="Step", style="PanelDim.TLabel").pack(side="right", padx=(0, 6))
+        self._build_ire_buttons()
         ttk.Label(row, text="Exact", style="PanelDim.TLabel").pack(side="left")
         self.ire_var = tk.StringVar(value="50")
         self.ire_spin = ttk.Spinbox(row, from_=0, to=100, textvariable=self.ire_var, width=5)
@@ -114,6 +124,24 @@ class ControlPage(ttk.Frame):
 
         app.on_state_change(self._on_connection)
         self._on_connection()
+
+    def _build_ire_buttons(self) -> None:
+        if self.ire_group is not None:
+            self.ire_group.destroy()
+        values = ire_steps(self.ire_step)
+        cols = 7 if len(values) > 12 else min(6, len(values))
+        self.ire_group = ButtonGroup(self.ire_frame, values, self.set_ire, cols, width=4)
+        self.ire_group.pack(fill="x", side="top")
+
+    def set_ire_step(self, step: int) -> None:
+        """Rebuild the IRE buttons at a new step (5/10/20/25) and remember it."""
+        if step not in IRE_STEP_CHOICES or step == self.ire_step:
+            return
+        self.ire_step = step
+        self.step_var.set(str(step))
+        self._build_ire_buttons()
+        self._render()
+        settings.save(ire_step=step)
 
     def build_footer(self) -> None:
         """Enable HCFR + Toggle Theme, as in the original app. Called once all pages exist."""
@@ -169,7 +197,7 @@ class ControlPage(ttk.Frame):
         self.color_group.select(v["color"])
         self.power_group.select(v["power"])
         ire = v["ire"]
-        nearest = None if ire is None else min(IRE_STEPS, key=lambda k: abs(k - ire))
+        nearest = None if ire is None else min(ire_steps(self.ire_step), key=lambda k: abs(k - ire))
         self.ire_group.select(nearest)
         t = v["temp"]
         self.temp_lbl.configure(text=f"Temperature  {'—' if t is None else f'{t:.0f} °F'}")

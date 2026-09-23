@@ -64,7 +64,18 @@ COLORS = {
     "Cyan":    3,
 }
 
-IRE_STEPS = list(range(0, 101, 10))
+IRE_STEP_CHOICES = (5, 10, 20, 25)
+DEFAULT_IRE_STEP = 10
+
+
+def ire_steps(step: int = DEFAULT_IRE_STEP) -> list[int]:
+    """Button values 0..100 for a step size (100 always included)."""
+    return list(range(0, 100, step)) + [100]
+
+
+def nearest_ire(value: float, step: int = DEFAULT_IRE_STEP) -> int:
+    """Nearest multiple of step within 0..100, halves rounding up."""
+    return max(0, min(100, int(value + step / 2) // step * step))
 
 SET_TIMEOUT = 0.6
 QUERY_TIMEOUT = 1.0

@@ -14,7 +14,9 @@ class HCFRPage(ttk.Frame):
     def __init__(self, master, app):
         super().__init__(master, padding=10)
         self.app = app
-        self.watcher = hcfr.HCFRWatcher(lambda d: app.call_soon(self._apply, d))
+        # step is read on the watcher thread: a plain int attribute, safe to read
+        self.watcher = hcfr.HCFRWatcher(lambda d: app.call_soon(self._apply, d),
+                                        step=lambda: app.control.ire_step)
 
         box = ttk.LabelFrame(self, text="HCFR FOLLOW", padding=12)
         box.pack(fill="x")
@@ -27,7 +29,7 @@ class HCFRPage(ttk.Frame):
         self.status_lbl = ttk.Label(box, text="", style="PanelDim.TLabel")
         self.status_lbl.pack(anchor="w", pady=(6, 0))
         ttk.Label(box, text="Colour cues (Red Primary … Yellow Secondary, White) set the VTG colour; "
-                            "“NN% Gray” sets IRE to the nearest 10. Only changes are sent.",
+                            "“NN% Gray” sets IRE to the nearest IRE step (set on CONTROL). Only changes are sent.",
                   style="PanelDim.TLabel", wraplength=460, justify="left").pack(anchor="w", pady=(6, 0))
 
         box = ttk.LabelFrame(self, text="TEST — paste HCFR text", padding=12)
@@ -97,7 +99,7 @@ class HCFRPage(ttk.Frame):
             self.app.control.set_ire(d.ire)
 
     def _test(self) -> hcfr.Decision | None:
-        d = hcfr.decide(self.test_text.get("1.0", "end"))
+        d = hcfr.decide(self.test_text.get("1.0", "end"), self.app.control.ire_step)
         self.test_lbl.configure(text=str(d) if d else "nothing")
         return d
 

@@ -4,7 +4,7 @@ Ported from the May 2025 app. Two halves:
 
   decide(text)  — pure: HCFR window text -> what the VTG should show.
                   Same rules as before: colour cues first, else "NN% gray"
-                  rounded to the nearest 10 IRE.
+                  rounded to the nearest IRE step (10 unless configured).
   HCFRWatcher   — Windows only: finds visible windows titled "Information",
                   reads them via UI Automation (pywinauto) plus an OCR
                   fallback (pytesseract), calls decide(), and reports only
@@ -18,6 +18,8 @@ from __future__ import annotations
 
 import re
 import sys
+
+from .protocol import DEFAULT_IRE_STEP, nearest_ire
 import threading
 from dataclasses import dataclass
 from typing import Callable
@@ -45,15 +47,15 @@ class Decision:
         return f"color {self.color}" if self.color else f"IRE {self.ire}"
 
 
-def decide(text: str) -> Decision | None:
+def decide(text: str, step: int = DEFAULT_IRE_STEP) -> Decision | None:
     low = text.lower()
     for cue, color in COLOR_CUES.items():
         if cue in low:
             return Decision(color=color)
     m = re.search(r"(\d{1,3})%\s*gray", text, re.IGNORECASE)
     if m and 0 <= int(m[1]) <= 100:
-        # nearest 10, halves up (the old app's round() sent 25% -> 20 but 35% -> 40)
-        return Decision(ire=(int(m[1]) + 5) // 10 * 10)
+        # nearest step, halves up (the old app's round() sent 25% -> 20 but 35% -> 40)
+        return Decision(ire=nearest_ire(int(m[1]), step))
     return None
 
 
@@ -100,9 +102,11 @@ def _read_information_windows() -> str:
 
 class HCFRWatcher:
     def __init__(self, on_decision: Callable[[Decision], None],
-                 read_text: Callable[[], str] = _read_information_windows):
+                 read_text: Callable[[], str] = _read_information_windows,
+                 step: Callable[[], int] = lambda: DEFAULT_IRE_STEP):
         self._on_decision = on_decision
         self._read = read_text
+        self._step = step
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._last: Decision | None = None
@@ -125,7 +129,7 @@ class HCFRWatcher:
     def _run(self, stop: threading.Event) -> None:
         while not stop.wait(POLL_INTERVAL):
             try:
-                d = decide(self._read())
+                d = decide(self._read(), self._step())
             except Exception:  # noqa: BLE001 — keep watching
                 continue
             if d is not None and d != self._last and not stop.is_set():
