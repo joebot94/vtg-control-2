@@ -60,7 +60,7 @@ class Event:
 
     def to_json(self) -> str:
         return json.dumps({
-            "t": round(self.t, 6),
+            "t": self.t,
             "dir": self.dir,
             "hex": to_hex(self.data),
             "ascii": to_ascii(self.data),
